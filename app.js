@@ -26,6 +26,16 @@ const myMap = {
 	},
 
 	// add business markers
+	addMarkers() {
+		for (var i = 0; i < this.businesses.length; i++) {
+		this.markers = L.marker([
+			this.businesses[i].lat,
+			this.businesses[i].long,
+		])
+			.bindPopup(`<p1>${this.businesses[i].name}</p1>`)
+			.addTo(this.map)
+		}
+	},
 }
 
 // get coordinates via geolocation api
@@ -37,15 +47,41 @@ async function getCoords(){
 }
 
 // get foursquare businesses
-
+async function getFoursquare(business) {
+	const options = {
+		method: 'GET',
+		headers: {
+		Accept: 'application/json',
+		Authorization: 'fsq3ATzZbmcGhdeFafr73wZcnJ+LlN6bK+4dh19a7ClS4u8='
+		}
+	}
+	let limit = 5
+	let lat = myMap.coordinates[0]
+	let lon = myMap.coordinates[1]
+	let response = await fetch(`https://api.foursquare.com/v3/places/search?&query=${business}&limit=${limit}&ll=${lat}%2C${lon}`, options)
+	let data = await response.text()
+	let parsedData = JSON.parse(data)
+	let businesses = parsedData.results
+	return businesses
+}
 // process foursquare array
+function processBusinesses(data) {
+	let businesses = data.map((element) => {
+		let location = {
+			name: element.name,
+			lat: element.geocodes.main.latitude,
+			long: element.geocodes.main.longitude
+		};
+		return location
+	})
+	return businesses
+}
 
 
 // event handlers
 // window load
 window.onload = async () => {
 	const coords = await getCoords()
-	console.log(coords)
 	myMap.coordinates = coords
 	myMap.buildMap()
 }
@@ -54,5 +90,7 @@ window.onload = async () => {
 document.getElementById('submit').addEventListener('click', async (event) => {
 	event.preventDefault()
 	let business = document.getElementById('business').value
-	console.log(business)
+	let data = await getFoursquare(business)
+	myMap.businesses = processBusinesses(data)
+	myMap.addMarkers()
 })
